@@ -1,0 +1,129 @@
+from google.colab import files
+uploaded = files.upload()
+
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+
+#A)
+
+G = nx.read_edgelist("PoliticalBlogs.txt")
+
+#Report number of nodes and edges:
+print("Number of nodes:", G.number_of_nodes())
+print("Number of edges:", G.number_of_edges())
+
+np.random.seed(1)
+
+#Plot network:
+plt.figure(figsize=(100, 100))
+nx.draw(G, with_labels=False)
+plt.title("Political Blogs Network")
+plt.show()
+
+#B)
+
+from sklearn.cluster import KMeans
+
+#Create adjacency matrix
+A = nx.to_numpy_array(G)
+
+#Create D^(-1/2)
+D1 = np.diag(np.sum(A, axis=0)**(-0.5))
+
+#Create normalized adjacency matrix: D^(-1/2) A D^(-1/2)
+L = D1 @ A @ D1
+
+#Find eigenvalues and eigenvectors
+eigenvalues, eigenvectors = np.linalg.eigh(L)
+
+#Get the top two eigenvectors
+top2 = np.argsort(eigenvalues)[-2:][::-1]
+U = eigenvectors[:, top2]
+
+#Row normalize the eigenvectors
+U_norm = U / np.linalg.norm(U, axis=1, keepdims=True)
+
+#Perform K-means clustering with K = 2
+kmeans = KMeans(n_clusters=2, random_state=1, n_init=10)
+labels = kmeans.fit_predict(U_norm)
+
+print("Cluster 0:", np.sum(labels == 0))
+print("Cluster 1:", np.sum(labels == 1))
+
+#Scatterplot of post-normalized eigenvectors:
+plt.figure(figsize=(8, 6))
+plt.scatter(U_norm[:, 0], U_norm[:, 1], c=labels)
+
+plt.xlabel("First Eigenvector")
+plt.ylabel("Second Eigenvector")
+plt.title("Spectral Clustering of Political Blogs")
+
+plt.show()
+
+#C)
+
+np.random.seed(1)
+
+plt.figure(figsize=(100, 100))
+nx.draw(G, with_labels=False, node_color=labels)
+plt.title("Political Blogs Network - Spectral Clustering")
+plt.show()
+
+#D)
+
+#Find node degrees
+degrees = np.sum(A, axis=0)
+
+#Set tau equal to the average degree
+tau = np.mean(degrees)
+print("Average degree (tau):", tau)
+
+#Create regularized D^(-1/2)
+D_reg = np.diag((degrees + tau)**(-0.5))
+
+#Regularized normalized adjacency matrix
+L_reg = D_reg @ A @ D_reg
+
+#Find eigenvalues and eigenvectors
+eigenvalues_reg, eigenvectors_reg = np.linalg.eigh(L_reg)
+
+#Get top two eigenvectors
+top2_reg = np.argsort(eigenvalues_reg)[-2:][::-1]
+U_reg = eigenvectors_reg[:, top2_reg]
+
+#Row normalize the eigenvectors
+U_reg_norm = U_reg / np.linalg.norm(U_reg, axis=1, keepdims=True)
+
+#Perform K-means clustering with K = 2
+kmeans_reg = KMeans(n_clusters=2, random_state=1, n_init=10)
+labels_reg = kmeans_reg.fit_predict(U_reg_norm)
+
+print("Cluster 0:", np.sum(labels_reg == 0))
+print("Cluster 1:", np.sum(labels_reg == 1))
+
+#Plot
+plt.figure(figsize=(8, 6))
+plt.scatter(U_reg_norm[:, 0], U_reg_norm[:, 1], c=labels_reg)
+
+plt.xlabel("First Eigenvector")
+plt.ylabel("Second Eigenvector")
+plt.title("Regularized Spectral Clustering of Political Blogs")
+
+plt.show()
+
+#E)
+
+np.random.seed(1)
+
+plt.figure(figsize=(100, 100))
+nx.draw(G, with_labels=False, node_color=labels_reg)
+plt.title("Political Blogs Network - Regularized Spectral Clustering")
+plt.show()
+
+#The regularized spectral clustering method separates the two groups much better
+#than the ordinary spectral clustering method from part (c).
+#The clusters are substantially more balanced and the network plot shows clearer
+#grouping of nodes by color.
+#This suggests that regularization improves the ability of spectral clustering
+#to identify the political communities in this network.
